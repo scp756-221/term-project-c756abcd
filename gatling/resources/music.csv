@@ -1,7 +1,7 @@
-Artist,SongTitle,UUID
-Taylor Swift,The Last Great American Dynasty,6ecfafd0-8a35-4af6-a9e2-cbd79b3abeea
-Backxwash,Bad Juju,c2573193-f333-49e2-abec-182915747756
-Sini Sabotage,Mun Planeeta,22e47f97-11ca-4c3c-8e77-f3068fddaf6e
-William Prince,Reliever,26e6462c-eacf-40bb-b4d0-d683966e2624
-Gang of Four,Isle of Dogs,bb9e9105-6224-4a60-aabd-8d29cc4b1349
-Carla Bley Trio,Utviklingssang,0894ddc7-0c84-4f13-a037-ddcaa1134ec8
+Artist,SongTitle,UUID,Owner
+Taylor Swift,The Last Great American Dynasty,6ecfafd0-8a35-4af6-a9e2-cbd79b3abeea,b66f61e7-4fad-402f-aaad-101e3e2522d3
+Backxwash,Bad Juju,c2573193-f333-49e2-abec-182915747756,423a10a6-ab66-48c5-a1c7-dffb3169d744
+Sini Sabotage,Mun Planeeta,22e47f97-11ca-4c3c-8e77-f3068fddaf6e,b66f61e7-4fad-402f-aaad-101e3e2522d3
+William Prince,Reliever,26e6462c-eacf-40bb-b4d0-d683966e2624,75ebc062-a808-4a0f-a79b-8ac568564bfe
+Gang of Four,Isle of Dogs,bb9e9105-6224-4a60-aabd-8d29cc4b1349,2e4c0d7e-b0e6-4739-b044-ee1d45872a7c
+Carla Bley Trio,Utviklingssang,0894ddc7-0c84-4f13-a037-ddcaa1134ec8,2e4c0d7e-b0e6-4739-b044-ee1d45872a7c

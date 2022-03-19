@@ -50,7 +50,7 @@ def create_user(lname, fname, email, uuid):
     return (response.json())
 
 
-def create_song(artist, title, uuid):
+def create_song(artist, title, uuid, owner):
     """
     Create a song.
     If a record already exists with the same artist and title,
@@ -63,7 +63,8 @@ def create_song(artist, title, uuid):
         json={"objtype": "music",
               "Artist": artist,
               "SongTitle": title,
-              "uuid": uuid})
+              "uuid": uuid,
+              "Owner": owner})
     return (response.json())
 
 
@@ -101,9 +102,11 @@ if __name__ == '__main__':
         for artist, title, uuid in rdr:
             resp = create_song(artist.strip(),
                                title.strip(),
-                               uuid.strip())
+                               uuid.strip()),
+                               owner.strip()
             resp = check_resp(resp, 'music_id')
             if resp is None or resp != uuid:
                 print('Error creating song {} {}, {}'.format(artist,
                                                              title,
-                                                             uuid))
+                                                             uuid,
+                                                             owner))

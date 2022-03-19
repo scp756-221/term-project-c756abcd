@@ -98,12 +98,13 @@ def create_song():
         content = request.get_json()
         Artist = content['Artist']
         SongTitle = content['SongTitle']
+        Owner = content['Owner']
     except Exception:
         return json.dumps({"message": "error reading arguments"})
     url = db['name'] + '/' + db['endpoint'][1]
     response = requests.post(
         url,
-        json={"objtype": "music", "Artist": Artist, "SongTitle": SongTitle},
+        json={"objtype": "music", "Artist": Artist, "SongTitle": SongTitle, "Owner": Owner},
         headers={'Authorization': headers['Authorization']})
     return (response.json())
 

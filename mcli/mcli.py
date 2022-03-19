@@ -9,10 +9,12 @@ import re
 
 # Installed packages
 import requests
+import jwt
 
 # The services check only that we pass an authorization,
 # not whether it's valid
-DEFAULT_AUTH = 'Bearer A'
+# DEFAULT_AUTH = 'Bearer A'
+# global DEFAULT_AUTH
 
 
 def parse_args():
@@ -35,6 +37,9 @@ def parse_args():
 def get_url(name, port):
     return "http://{}:{}/api/v1/music/".format(name, port)
 
+def get_s1_url(name, port):
+    return "http://{}:{}/api/v1/user/".format(name, port)
+
 
 def parse_quoted_strings(arg):
     """
@@ -50,6 +55,8 @@ def parse_quoted_strings(arg):
 
 class Mcli(cmd.Cmd):
     def __init__(self, args):
+        self.USER_ID = ""
+        # DEFAULT_AUTH = ""
         self.name = args.name
         self.port = args.port
         cmd.Cmd.__init__(self)
@@ -83,10 +90,13 @@ Enter 'help' for command list.
         all songs and will instead return an empty list if
         no parameter is provided.
         """
+        # if DEFAULT_AUTH == "":
+        #     print("no user logged in")
+        #     return
         url = get_url(self.name, self.port)
         r = requests.get(
             url+arg.strip(),
-            headers={'Authorization': DEFAULT_AUTH}
+            headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
@@ -96,10 +106,11 @@ Enter 'help' for command list.
             return
         print("{} items returned".format(items['Count']))
         for i in items['Items']:
-            print("{}  {:20.20s} {}".format(
+            print("{}  {:20.20s} {}    owner: {}".format(
                 i['music_id'],
                 i['Artist'],
-                i['SongTitle']))
+                i['SongTitle'],
+                i['Owner']))
 
     def do_create(self, arg):
         """
@@ -120,16 +131,20 @@ Enter 'help' for command list.
         create Chumbawamba Tubthumping
             No quotes needed for single-word artist or title name.
         """
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
         url = get_url(self.name, self.port)
         args = parse_quoted_strings(arg)
         payload = {
             'Artist': args[0],
-            'SongTitle': args[1]
+            'SongTitle': args[1],
+            'Owner': self.USER_ID
         }
         r = requests.post(
             url,
             json=payload,
-            headers={'Authorization': DEFAULT_AUTH}
+            headers={'Authorization': self.USER_ID}
         )
         print(r.json())
 
@@ -147,10 +162,13 @@ Enter 'help' for command list.
         delete 6ecfafd0-8a35-4af6-a9e2-cbd79b3abeea
             Delete "The Last Great American Dynasty".
         """
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
         url = get_url(self.name, self.port)
         r = requests.delete(
             url+arg.strip(),
-            headers={'Authorization': DEFAULT_AUTH}
+            headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
@@ -165,10 +183,13 @@ Enter 'help' for command list.
         """
         Run a test stub on the music server.
         """
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
         url = get_url(self.name, self.port)
         r = requests.get(
             url+'test',
-            headers={'Authorization': DEFAULT_AUTH}
+            headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
@@ -177,13 +198,74 @@ Enter 'help' for command list.
         """
         Tell the music cerver to shut down.
         """
+        if DEFAULT_AUTH == "":
+            print("no user logged in")
+            return
         url = get_url(self.name, self.port)
         r = requests.get(
             url+'shutdown',
-            headers={'Authorization': DEFAULT_AUTH}
+            headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
+
+    # def do_wtf(self, arg):
+    #     print("I dont know how the fuck work")
+
+    def do_login(self, arg):
+        if self.USER_ID != "":
+            print("Already signed in as: " + self.USER_ID)
+            return
+
+        payload = {
+            'uid': arg.strip(),
+        }
+        url = get_s1_url(self.name, self.port)
+        r = requests.put(
+            url+"login",
+            json=payload,
+           
+        )
+        print(url)
+        # print(r.json())
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+        print("json:  " + r.text)
+        decode = jwt.decode(r.text, 'secret', algorithms='HS256')
+        print(decode)
+        self.USER_ID = decode["user_id"]
+        # self.USER_ID = self.USER_ID
+        print(self.USER_ID)
+        
+    def do_create_user(self, arg):
+        payload = {
+            'fname': arg[0],
+            'lname': arg[1],      
+            'email': arg[2],           
+        }
+        url = get_s1_url(self.name, self.port)
+        r = requests.post(
+            url,
+            json=payload,           
+        )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+        print(r.json())
+
+    def do_logoff(self, arg):
+        payload = {'jwt' : ""}
+        url = get_s1_url(self.name, self.port)
+        r = requests.put(
+            url+"logoff",
+            json=payload,           
+        )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+        print("log out" + self.USER_ID)
+        self.USER_ID = ""
+        # DEFAULT_AUTH = ""
 
 
 if __name__ == '__main__':
