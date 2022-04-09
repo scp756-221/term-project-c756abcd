@@ -8,4 +8,4 @@ docker container run --detach --rm \
   -e SIM_NAME=ReadMusicSim \
   --label gatling \
   ghcr.io/scp-2021-jan-cmpt-756/gatling:3.4.2 \
-  -s proj756.ReadMusicSim
+  -s proj756.ReadUserSim
