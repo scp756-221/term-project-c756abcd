@@ -91,6 +91,41 @@ def update():
     return response
 
 
+@bp.route('/read_music', methods=['GET'])
+def read_new():
+    headers = request.headers  # noqa: F841
+    # check header here
+    objtype = urllib.parse.unquote_plus(request.args.get('objtype'))
+    if request.args.get('objkey') != None:
+        objkey = urllib.parse.unquote_plus(request.args.get('objkey'))
+    else:
+        objkey = "" 
+
+    if request.args.get('owner') != None:
+        owner = urllib.parse.unquote_plus(request.args.get('owner'))
+    else:
+        owner = ""
+
+    table_name = objtype.capitalize()+"-ZZ-REG-ID"
+    table_id = objtype + "_id"
+    table = dynamodb.Table(table_name)
+    if objkey or objkey != "":
+        if owner or owner != "":
+            response = table.scan(
+                    FilterExpression=Attr('SongTitle').eq(objkey) & Attr('Owner').eq(owner)
+                )
+    else:
+        if owner or owner != "":
+            response = table.scan(
+                    FilterExpression=Attr('Owner').eq(owner)
+                )
+        else:
+            attrs = table.attribute_definitions
+            # print(attrs)
+            response = table.scan()
+            response['attrib'] = attrs
+    return response
+
 @bp.route('/read', methods=['GET'])
 def read():
     headers = request.headers  # noqa: F841
@@ -198,6 +233,31 @@ def delete():
     table_id = objtype + "_id"
     table = dynamodb.Table(table_name)
     response = table.delete_item(Key={table_id: objkey})
+    return response
+
+@bp.route('/delete_music', methods=['DELETE'])
+def delete_music():
+    headers = request.headers  # noqa: F841
+    # check header here
+    objtype = urllib.parse.unquote_plus(request.args.get('objtype'))
+    # objkey = urllib.parse.unquote_plus(request.args.get('objkey'))
+    if request.args.get('objkey') != None:
+        objkey = urllib.parse.unquote_plus(request.args.get('objkey'))
+    else:
+        objkey = "" 
+    if request.args.get('owner') != None:
+        owner = urllib.parse.unquote_plus(request.args.get('owner'))
+    else:
+        owner = ""
+    table_name = objtype.capitalize()+"-ZZ-REG-ID"
+    table_id = objtype + "_id"
+    table = dynamodb.Table(table_name)
+    # response = table.delete_item(Key={table_id: objkey})
+    if objkey or objkey != "":
+        if owner or owner != "":
+            response = table.scan(
+                    FilterExpression=Attr('SongTitle').eq(objkey) & Attr('Owner').eq(owner)
+                )
     return response
 
 

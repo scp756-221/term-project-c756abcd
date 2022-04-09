@@ -37,7 +37,8 @@ db = {
         "read",
         "write",
         "delete",
-        "update"
+        "update",
+        "read_music",
     ]
 }
 
@@ -61,6 +62,23 @@ def health():
 def readiness():
     return Response("", status=200, mimetype="application/json")
 
+@bp.route('/list_users', methods=['GET'])
+def list_user():
+    #for test, list all items in table
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+    # list all songs here
+    payload = {"objtype": "user"}
+    url = db['name'] + '/' + db['endpoint'][4]
+    response = requests.get(
+        url,
+        payload,
+        headers={'Authorization': headers['Authorization']})
+    return (response.json())
 
 @bp.route('/<user_id>', methods=['PUT'])
 def update_user(user_id):

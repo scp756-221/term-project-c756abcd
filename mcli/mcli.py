@@ -13,7 +13,7 @@ import jwt
 
 # The services check only that we pass an authorization,
 # not whether it's valid
-# DEFAULT_AUTH = 'Bearer A'
+DEFAULT_AUTH = 'Bearer A'
 # global DEFAULT_AUTH
 
 
@@ -39,6 +39,9 @@ def get_url(name, port):
 
 def get_s1_url(name, port):
     return "http://{}:{}/api/v1/user/".format(name, port)
+
+def get_s3_url(name, port):
+    return "http://{}:{}/api/v1/playList/".format(name, port)
 
 
 def parse_quoted_strings(arg):
@@ -66,6 +69,63 @@ Command-line interface to music service.
 Enter 'help' for command list.
 'Tab' character autocompletes commands.
 """
+    def do_test_list_all(self,arg):
+        url = get_url(self.name, self.port)
+        r = requests.get(
+            url+"list_table",
+            headers={'Authorization': DEFAULT_AUTH}
+            )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+        items = r.json()
+        if 'Count' not in items:
+            print("0 items returned")
+            return
+        print("{} items returned".format(items['Count']))
+        print(items)
+        for i in items['Items']:
+            print("{}  {:20.20s} {}    owner: {}".format(
+                i['music_id'],
+                i['Artist'],
+                i['SongTitle'],
+                i['Owner']))
+
+    def do_test_list_all_user(self,arg):
+        url = get_s1_url(self.name, self.port)
+        r = requests.get(
+            url+"list_users",
+            headers={'Authorization': DEFAULT_AUTH}
+            )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+        items = r.json()
+        print(items)
+
+    def do_list_all_music(self,arg):
+        url = get_url(self.name, self.port)
+        r = requests.get(
+            url+"list_table",
+            headers={'Authorization': self.USER_ID}
+            )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+        items = r.json()
+        if 'Count' not in items:
+            print("0 items returned")
+            return
+        print("{} items returned".format(items['Count']))
+        print(items)
+        for i in items['Items']:
+            print("{:20.20s} - {}".format(
+                # i['music_id'],
+                i['Artist'],
+                i['SongTitle'],
+                # i['Owner']
+                ))
+
 
     def do_read(self, arg):
         """
@@ -90,27 +150,30 @@ Enter 'help' for command list.
         all songs and will instead return an empty list if
         no parameter is provided.
         """
-        # if DEFAULT_AUTH == "":
-        #     print("no user logged in")
-        #     return
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
+
         url = get_url(self.name, self.port)
         r = requests.get(
-            url+arg.strip(),
+            url + self.USER_ID+ "/" + arg.strip(),
             headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
+            return
         items = r.json()
         if 'Count' not in items:
             print("0 items returned")
             return
         print("{} items returned".format(items['Count']))
         for i in items['Items']:
-            print("{}  {:20.20s} {}    owner: {}".format(
-                i['music_id'],
+            print("{:20.20s} - {}".format(
+                # i['music_id'],
                 i['Artist'],
                 i['SongTitle'],
-                i['Owner']))
+                # i['Owner']
+                ))
 
     def do_create(self, arg):
         """
@@ -167,7 +230,7 @@ Enter 'help' for command list.
             return
         url = get_url(self.name, self.port)
         r = requests.delete(
-            url+arg.strip(),
+            url + self.USER_ID + "/" + arg.strip(),
             headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
@@ -183,24 +246,55 @@ Enter 'help' for command list.
         """
         Run a test stub on the music server.
         """
-        if self.USER_ID == "":
-            print("no user logged in")
-            return
+        # if self.USER_ID == "":
+        #     print("no user logged in")
+        #     return
         url = get_url(self.name, self.port)
+        print(url)
         r = requests.get(
             url+'test',
             headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
+    
+    def do_test_new_db(self, arg):
+        url = get_url(self.name, self.port)
+        print(url)
+        r = requests.get(
+            url+'test_new_db',
+            headers={'Authorization': self.USER_ID}
+            )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+        print(r.json())
+
+    def do_test_new_db_create(self, arg):
+
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
+        url = get_url(self.name, self.port)
+        args = parse_quoted_strings(arg)
+        payload = {
+            'Artist': args[0],
+            'SongTitle': args[1],
+            'Owner': self.USER_ID
+        }
+        r = requests.post(
+            url+'test_new_db_create',
+            json=payload,
+            headers={'Authorization': self.USER_ID}
+        )
+        print(r.json())
 
     def do_shutdown(self, arg):
         """
         Tell the music cerver to shut down.
         """
-        if DEFAULT_AUTH == "":
-            print("no user logged in")
-            return
+        # if DEFAULT_AUTH == "":
+        #     print("no user logged in")
+        #     return
         url = get_url(self.name, self.port)
         r = requests.get(
             url+'shutdown',
@@ -251,7 +345,23 @@ Enter 'help' for command list.
         )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
+            return
         print(r.json())
+
+    def do_delete_user(self, arg):
+        if self.USER_ID == "":
+            print("You have to log in to delete the user")
+            return
+
+        url = get_s1_url(self.name, self.port)
+        r = request.delete(
+            url+self.USER_ID,
+        )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+        print("delete user: " + self.USER_ID)
+        self.USER_ID = ""
 
     def do_logoff(self, arg):
         payload = {'jwt' : ""}
