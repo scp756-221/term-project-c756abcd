@@ -1,6 +1,6 @@
 # Makefile for Gatling container
-REG_ID=
-CREG=
+REG_ID=zoielee
+CREG=ghcr.io
 
 GATLING_VER=3.4.2
 IMAGE_NAME=$(CREG)/$(REG_ID)/gatling:$(GATLING_VER)
