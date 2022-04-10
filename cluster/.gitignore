@@ -1,7 +1,10 @@
 db.yaml
 s1.yaml
+s3.ymal
 s2-dpl-v*.yaml
+s3-dpl-v*.yaml
 !s2-dpl-*-tpl.yaml
+!s3-dpl-*-tpl.yaml
 loader.yaml
 db-nohealth.yaml
 s1-nohealth.yaml
@@ -11,3 +14,4 @@ awscred.yaml
 tpl-vars.txt
 *-token.txt
 cloudformationdynamodb.json
+s3-nohealth.yaml
