@@ -35,12 +35,7 @@ metrics = PrometheusMetrics(app)
 metrics.info('app_info', 'Playlist process')
 
 db = {
-    "name": "http://cmpt756db:30002/api/v1/datastore",
-    "endpoint": [
-        "read",
-        "write",
-        "delete"
-    ]
+    "name": "http://cmpt756db:30002/api/v1/datastore"
 }
 bp = Blueprint('app', __name__)
 
@@ -54,6 +49,8 @@ def health():
 @metrics.do_not_track()
 def readiness():
     return Response("", status=200, mimetype="application/json")
+
+app.register_blueprint(bp, url_prefix='/api/v1/playlist/')
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
