@@ -16,7 +16,7 @@
 
 # These will be filled in by template processor
 CREG=ghcr.io
-REGID=zoielee
+REGID=bza62
 AWS_REGION=us-west-2
 
 # Keep all the logs out of main directory
@@ -32,6 +32,7 @@ IC=istioctl
 # Override these by environment variables and `make -e`
 APP_VER_TAG=v1
 S2_VER=v1
+S3_VER=v1
 LOADER_VER=v1
 
 # Kubernetes parameters that most of the time will be unchanged
@@ -69,11 +70,11 @@ provision: istio prom deploy
 # --- deploy: Deploy and monitor the three microservices
 # Use `provision` to deploy the entire stack (including Istio, Prometheus, ...).
 # This target only deploys the sample microservices
-deploy: appns gw s1 s2 db monitoring
+deploy: appns gw s1 s2 s3 db monitoring
 	$(KC) -n $(APP_NS) get gw,vs,deploy,svc,pods
 
 # --- rollout: Rollout new deployments of all microservices
-rollout: rollout-s1 rollout-s2 rollout-db
+rollout: rollout-s1 rollout-s2 rollout-s3 rollout-db
 
 # --- rollout-s1: Rollout a new deployment of S1
 rollout-s1: s1
@@ -84,6 +85,12 @@ rollout-s2: $(LOG_DIR)/s2-$(S2_VER).repo.log  cluster/s2-dpl-$(S2_VER).yaml
 	$(KC) -n $(APP_NS) apply -f cluster/s2-dpl-$(S2_VER).yaml | tee $(LOG_DIR)/rollout-s2.log
 	$(KC) rollout -n $(APP_NS) restart deployment/cmpt756s2-$(S2_VER) | tee -a $(LOG_DIR)/rollout-s2.log
 
+# --- rollout-s3: Rollout a new deployment of S3
+rollout-s3: $(LOG_DIR)/s3-$(S3_VER).repo.log  cluster/s3-dpl-$(S3_VER).yaml
+	$(KC) -n $(APP_NS) apply -f cluster/s3-dpl-$(S3_VER).yaml | tee $(LOG_DIR)/rollout-s3.log
+	$(KC) rollout -n $(APP_NS) restart deployment/cmpt756s3-$(S3_VER) | tee -a $(LOG_DIR)/rollout-s3.log
+
+
 # --- rollout-db: Rollout a new deployment of DB
 rollout-db: db
 	$(KC) rollout -n $(APP_NS) restart deployment/cmpt756db
@@ -93,6 +100,7 @@ rollout-db: db
 health-off:
 	$(KC) -n $(APP_NS) apply -f cluster/s1-nohealth.yaml
 	$(KC) -n $(APP_NS) apply -f cluster/s2-nohealth.yaml
+	$(KC) -n $(APP_NS) apply -f cluster/s3-nohealth.yaml
 	$(KC) -n $(APP_NS) apply -f cluster/db-nohealth.yaml
 
 # --- scratch: Delete the microservices and everything else in application NS
@@ -109,7 +117,7 @@ scratch: clean
 
 # --- clean: Delete all the application log files
 clean:
-	/bin/rm -f $(LOG_DIR)/{s1,s2,db,gw,monvs}*.log $(LOG_DIR)/rollout*.log
+	/bin/rm -f $(LOG_DIR)/{s1,s2,s3,db,gw,monvs}*.log $(LOG_DIR)/rollout*.log
 
 # --- dashboard: Start the standard Kubernetes dashboard
 # NOTE:  Before invoking this, the dashboard must be installed and a service account created
@@ -132,6 +140,10 @@ log-s1:
 log-s2:
 	$(KC) -n $(APP_NS) logs deployment/cmpt756s2 --container cmpt756s2
 
+log-s3:
+	$(KC) -n $(APP_NS) logs deployment/cmpt756s3 --container cmpt756s3
+
+
 log-db:
 	$(KC) -n $(APP_NS) logs deployment/cmpt756db --container cmpt756db
 
@@ -144,6 +156,12 @@ shell-s1:
 shell-s2:
 	@echo Use the following command line to drop into the s2 service:
 	@echo   $(KC) -n $(APP_NS) exec -it deployment/cmpt756s2 --container cmpt756s2 -- bash
+
+shell-s3:
+	@echo Use the following command line to drop into the s3 service:
+	@echo   $(KC) -n $(APP_NS) exec -it deployment/cmpt756s3 --container cmpt756s3 -- bash
+
+
 
 shell-db:
 	@echo Use the following command line to drop into the db service:
@@ -177,6 +195,7 @@ loader: dynamodb-init $(LOG_DIR)/loader.repo.log cluster/loader.yaml
 	$(KC) -n $(APP_NS) delete --ignore-not-found=true jobs/cmpt756loader
 	tools/build-configmap.sh gatling/resources/users.csv cluster/users-header.yaml | kubectl -n $(APP_NS) apply -f -
 	tools/build-configmap.sh gatling/resources/music.csv cluster/music-header.yaml | kubectl -n $(APP_NS) apply -f -
+	tools/build-configmap.sh gatling/resources/playList.csv cluster/playList-header.yaml | kubectl -n $(APP_NS) apply -f -
 	$(KC) -n $(APP_NS) apply -f cluster/loader.yaml | tee $(LOG_DIR)/loader.log
 
 # --- dynamodb-init: set up our DynamoDB tables
@@ -187,14 +206,14 @@ dynamodb-init: $(LOG_DIR)/dynamodb-init.log
 $(LOG_DIR)/dynamodb-init.log: cluster/cloudformationdynamodb.json
 	@# "|| true" suffix because command fails when stack already exists
 	@# (even with --on-failure DO_NOTHING, a nonzero error code is returned)
-	$(AWS) cloudformation create-stack --stack-name db-zoielee --template-body file://$< || true | tee $(LOG_DIR)/dynamodb-init.log
+	$(AWS) cloudformation create-stack --stack-name db-bza62 --template-body file://$< || true | tee $(LOG_DIR)/dynamodb-init.log
 	# Must give DynamoDB time to create the tables before running the loader
 	sleep 20
 
 # --- dynamodb-stop: Stop the AWS DynamoDB service
 #
 dynamodb-clean:
-	$(AWS) cloudformation delete-stack --stack-name db-zoielee || true | tee $(LOG_DIR)/dynamodb-clean.log
+	$(AWS) cloudformation delete-stack --stack-name db-bza62 || true | tee $(LOG_DIR)/dynamodb-clean.log
 	@# Rename DynamoDB log so dynamodb-init will force a restart but retain the log
 	/bin/mv -f $(LOG_DIR)/dynamodb-init.log $(LOG_DIR)/dynamodb-init-old.log || true
 
@@ -287,6 +306,12 @@ s2: rollout-s2 cluster/s2-svc.yaml cluster/s2-sm.yaml cluster/s2-vs.yaml
 	$(KC) -n $(APP_NS) apply -f cluster/s2-sm.yaml | tee -a $(LOG_DIR)/s2.log
 	$(KC) -n $(APP_NS) apply -f cluster/s2-vs.yaml | tee -a $(LOG_DIR)/s2.log
 
+s3: rollout-s3 cluster/s3-svc.yaml cluster/s3-sm.yaml cluster/s3-vs.yaml
+	$(KC) -n $(APP_NS) apply -f cluster/s3-svc.yaml | tee $(LOG_DIR)/s3.log
+	$(KC) -n $(APP_NS) apply -f cluster/s3-sm.yaml | tee -a $(LOG_DIR)/s3.log
+	$(KC) -n $(APP_NS) apply -f cluster/s3-vs.yaml | tee -a $(LOG_DIR)/s3.log
+
+
 # Update DB and associated monitoring, rebuilding if necessary
 db: $(LOG_DIR)/db.repo.log cluster/awscred.yaml cluster/dynamodb-service-entry.yaml cluster/db.yaml cluster/db-sm.yaml cluster/db-vs.yaml
 	$(KC) -n $(APP_NS) apply -f cluster/awscred.yaml | tee $(LOG_DIR)/db.log
@@ -296,7 +321,7 @@ db: $(LOG_DIR)/db.repo.log cluster/awscred.yaml cluster/dynamodb-service-entry.y
 	$(KC) -n $(APP_NS) apply -f cluster/db-vs.yaml | tee -a $(LOG_DIR)/db.log
 
 # Build & push the images up to the CR
-cri: $(LOG_DIR)/s1.repo.log $(LOG_DIR)/s2-$(S2_VER).repo.log $(LOG_DIR)/db.repo.log
+cri: $(LOG_DIR)/s1.repo.log $(LOG_DIR)/s2-$(S2_VER).repo.log $(LOG_DIR)/S3-$(S3_VER).repo.log $(LOG_DIR)/db.repo.log
 
 # Build the s1 service
 $(LOG_DIR)/s1.repo.log: s1/Dockerfile s1/app.py s1/requirements.txt
@@ -309,6 +334,12 @@ $(LOG_DIR)/s2-$(S2_VER).repo.log: s2/$(S2_VER)/Dockerfile s2/$(S2_VER)/app.py s2
 	make -f k8s.mak --no-print-directory registry-login
 	$(DK) build $(ARCH) -t $(CREG)/$(REGID)/cmpt756s2:$(S2_VER) s2/$(S2_VER) | tee $(LOG_DIR)/s2-$(S2_VER).img.log
 	$(DK) push $(CREG)/$(REGID)/cmpt756s2:$(S2_VER) | tee $(LOG_DIR)/s2-$(S2_VER).repo.log
+
+# Build the s3 service
+$(LOG_DIR)/s3-$(S3_VER).repo.log: s3/$(S3_VER)/Dockerfile s3/$(S3_VER)/app.py s3/$(S3_VER)/requirements.txt
+	make -f k8s.mak --no-print-directory registry-login
+	$(DK) build $(ARCH) -t $(CREG)/$(REGID)/cmpt756s3:$(S3_VER) s3/$(S3_VER) | tee $(LOG_DIR)/s3-$(S3_VER).img.log
+	$(DK) push $(CREG)/$(REGID)/cmpt756s3:$(S3_VER) | tee $(LOG_DIR)/s3-$(S3_VER).repo.log
 
 # Build the db service
 $(LOG_DIR)/db.repo.log: db/Dockerfile db/app.py db/requirements.txt
@@ -327,6 +358,7 @@ $(LOG_DIR)/loader.repo.log: loader/app.py loader/requirements.txt loader/Dockerf
 cr: registry-login
 	$(DK) push $(CREG)/$(REGID)/cmpt756s1:$(APP_VER_TAG) | tee $(LOG_DIR)/s1.repo.log
 	$(DK) push $(CREG)/$(REGID)/cmpt756s2:$(S2_VER) | tee $(LOG_DIR)/s2.repo.log
+	$(DK) push $(CREG)/$(REGID)/cmpt756s3:$(S3_VER) | tee $(LOG_DIR)/s3.repo.log
 	$(DK) push $(CREG)/$(REGID)/cmpt756db:$(APP_VER_TAG) | tee $(LOG_DIR)/db.repo.log
 
 # ---------------------------------------------------------------------------------------
