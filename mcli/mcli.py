@@ -41,7 +41,7 @@ def get_s1_url(name, port):
     return "http://{}:{}/api/v1/user/".format(name, port)
 
 def get_s3_url(name, port):
-    return "http://{}:{}/api/v1/playList/".format(name, port)
+    return "http://{}:{}/api/v1/playlist/".format(name, port)
 
 
 def parse_quoted_strings(arg):
