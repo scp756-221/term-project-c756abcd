@@ -14,7 +14,7 @@ import uuid
 # Installed packages
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 
 from flask import Blueprint
 from flask import Flask
