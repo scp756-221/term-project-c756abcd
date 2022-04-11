@@ -59,6 +59,9 @@ def parse_quoted_strings(arg):
 class Mcli(cmd.Cmd):
     def __init__(self, args):
         self.USER_ID = ""
+        self.playing = False
+        self.playing_music = ""
+        self.create_time = 0
         # DEFAULT_AUTH = ""
         self.name = args.name
         self.port = args.port
@@ -287,6 +290,117 @@ Enter 'help' for command list.
             headers={'Authorization': self.USER_ID}
         )
         print(r.json())
+
+    def do_play(self, arg):
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
+
+        args = parse_quoted_strings(arg)
+        if len(args) <= 0:
+            music_name = "NONE"
+        else:
+            music_name = args[0]
+
+        if self.playing and music_name == "NONE":
+            print("now playing: " + self.playing_music)
+            return
+        
+        url = get_url(self.name, self.port)
+        
+        r = requests.get(
+        url + "play/" + self.USER_ID + "/" + music_name,
+            headers={'Authorization': self.USER_ID}
+            )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+
+        items = r.json()
+        if 'Count' not in items:
+            print("No music found")
+            return
+        print("{} items returned".format(items['Count']))
+        for i in items['Items']:
+            print("{:20.20s} - {}".format(
+                # i['music_id'],
+                i['Artist'],
+                i['SongTitle'],
+                # i['Owner']
+                ))
+            self.playing_music = i['SongTitle']
+            self.create_time = i['create_time']
+            self.playing = True
+            return # try only print one!
+    
+    def do_next(self, arg):
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
+        # if not self.playing:
+        #     do_play(self, arg)
+        #     return
+
+        url = get_url(self.name, self.port)
+        r = requests.get(
+            url + "next/" + self.USER_ID + "/" + str(self.create_time),
+            headers={'Authorization': self.USER_ID}
+            )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+
+        items = r.json()
+        # print(items)
+        if 'Count' not in items:
+            print("No music found")
+            return
+        print("{} items returned".format(items['Count']))
+        for i in items['Items']:
+            print("{:20.20s} - {}".format(
+                # i['music_id'],
+                i['Artist'],
+                i['SongTitle'],
+                # i['Owner']
+                ))
+            self.playing_music = i['SongTitle']
+            self.create_time = i['create_time']
+            return # try only print one!
+
+        return 
+
+     def do_prev(self, arg):
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
+
+        url = get_url(self.name, self.port)
+        r = requests.get(
+            url + "prev/" + self.USER_ID + "/" + str(self.create_time),
+            headers={'Authorization': self.USER_ID}
+            )
+        if r.status_code != 200:
+            print("Non-successful status code:", r.status_code)
+            return
+
+        items = r.json()
+        # print(items)
+        if 'Count' not in items:
+            print("No music found")
+            return
+        print("{} items returned".format(items['Count']))
+        for i in items['Items']:
+            print("{:20.20s} - {}".format(
+                # i['music_id'],
+                i['Artist'],
+                i['SongTitle'],
+                # i['Owner']
+                ))
+            self.playing_music = i['SongTitle']
+            self.create_time = i['create_time']
+            return # try only print one!
+
+        return 
 
     def do_shutdown(self, arg):
         """

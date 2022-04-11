@@ -139,6 +139,38 @@ def read():
                            KeyConditionExpression=Key(table_id).eq(objkey))
     return response
 
+@bp.route('/next', methods=['GET'])
+def next():
+    # payload = {"objtype": "Playlist", "owner": headers['Authorization']}
+    objtype = urllib.parse.unquote_plus(request.args.get('objtype'))
+    owner = urllib.parse.unquote_plus(request.args.get('owner'))
+    create_time = int(urllib.parse.unquote_plus(request.args.get('create_time')))
+    table_name = objtype.capitalize()+"-ZZ-REG-ID"
+    table = dynamodb.Table(table_name)
+    response = table.scan(
+                        # KeyConditionExpression=Key("create_time").gt(create_time),
+                        # Limit=1,
+                        FilterExpression=Attr('Owner').eq(owner) & Attr("create_time").gt(create_time)
+                    )   
+    response["test_create_time"] = create_time
+    response["test_create_time_type"] = str(type(create_time))
+    return response
+
+@bp.route('/prev', methods=['GET'])
+def prev():
+    objtype = urllib.parse.unquote_plus(request.args.get('objtype'))
+    owner = urllib.parse.unquote_plus(request.args.get('owner'))
+    create_time = int(urllib.parse.unquote_plus(request.args.get('create_time')))
+    table_name = objtype.capitalize()+"-ZZ-REG-ID"
+    table = dynamodb.Table(table_name)
+    response = table.scan(
+                        # KeyConditionExpression=Key("create_time").lt(create_time),
+                        # Limit=1,
+                        FilterExpression=Attr('Owner').eq(owner) & Attr("create_time").lt(create_time),
+                        ScanIndexForward=False
+                    )
+
+    return response
 
 @bp.route('/write', methods=['POST'])
 def write():

@@ -242,7 +242,148 @@ def test_new_db():
         payload,
         headers={'Authorization': headers['Authorization']})
     return (response.json())
+
+@bp.route('/play/<owner>/<music_name>', methods=['GET'])
+def play_music(owner, music_name):
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+
+    #check if music in play list:    
+    payload = {"objtype": "Playlist", "owner": headers['Authorization']}
+    url = db['name'] + '/' + db['endpoint'][3]
+    response = requests.get(
+        url,
+        payload,
+        headers={'Authorization': headers['Authorization']})
+
+    items = response.json()
+    if 'Count' not in items or items['Count'] == 0:
+        return (response.json())
+    else:
+        if music_name != "NONE":
+            #same as read
+            # payload = {"objtype": "Playlist", "objkey": music_name, "owner": headers['Authorization'], "create_time": 0}
+            payload = {"objtype": "Playlist", "objkey": music_name, "owner": owner}
+            url = db['name'] + '/' + db['endpoint'][3]
+            response = requests.get(
+                url,
+                params=payload,
+                headers={'Authorization': headers['Authorization']})
+            return (response.json())
+
+        else:
+            payload = {"objtype": "Playlist", "owner": headers['Authorization'], "create_time": 0}
+            # play from begining
+            url = db['name'] + "/next"
+            response = requests.get(
+                url,
+                payload,
+                headers={'Authorization': headers['Authorization']})
+            items = response.json()
     
+    return (response.json())
+
+@bp.route('/next/<owner>/<create_time>', methods=['GET'])
+def next_music(owner, create_time):
+    headers = request.headers
+    create_time = int(create_time)
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+
+    #check if music in play list:
+    payload = {"objtype": "Playlist", "owner": headers['Authorization'], "create_time": create_time}
+    url = db['name'] + '/' + db['endpoint'][3]
+    response = requests.get(
+        url,
+        payload,
+        headers={'Authorization': headers['Authorization']})
+
+    items = response.json()
+    if 'Count' not in items or items['Count'] == 0:
+        return (response.json())
+    else:
+        # print("count: " + str(items['Count']))
+        # try play newer one
+        url = db['name'] + "/next"
+        response_ = requests.get(
+            url,
+            payload,
+            headers={'Authorization': headers['Authorization']})
+        items_ = response_.json()
+        
+        if 'Count' not in items_  or items_['Count'] == 0:        
+            # otherwise play from begining
+            url = db['name'] + "/next"
+            payload = {"objtype": "Playlist", "owner": headers['Authorization'], "create_time": 0}
+            response__ = requests.get(
+                url,
+                payload,
+                headers={'Authorization': headers['Authorization']})
+            ret = response__.json()
+            ret["test_the_last_query"] = str(items_)
+            return (ret)
+        else:
+            # print("count: " + str(items_['Count']))
+            return (response_.json())
+    
+    return (response.json())
+
+@bp.route('/prev/<owner>/<create_time>', methods=['GET'])
+def prev_music(owner, create_time):
+    headers = request.headers
+    create_time = int(create_time)
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+
+    #check if music in play list:
+    payload = {"objtype": "Playlist", "owner": headers['Authorization'], "create_time": create_time}
+    url = db['name'] + '/' + db['endpoint'][3]
+    response = requests.get(
+        url,
+        payload,
+        headers={'Authorization': headers['Authorization']})
+
+    items = response.json()
+    if 'Count' not in items or items['Count'] == 0:
+        return (response.json())
+    else:
+        # print("count: " + str(items['Count']))
+        # try play newer one
+        url = db['name'] + "/prev"
+        response_ = requests.get(
+            url,
+            payload,
+            headers={'Authorization': headers['Authorization']})
+        items_ = response_.json()
+        
+        if 'Count' not in items_  or items_['Count'] == 0:        
+            # otherwise play from begining
+            url = db['name'] + "/prev"
+            payload = {"objtype": "Playlist", "owner": headers['Authorization'], "create_time": 0}
+            response__ = requests.get(
+                url,
+                payload,
+                headers={'Authorization': headers['Authorization']})
+            ret = response__.json()
+            ret["test_the_last_query"] = str(items_)
+            return (ret)
+        else:
+            # print("count: " + str(items_['Count']))
+            return (response_.json())
+    
+    return (response.json())
+
+
 # All database calls will have this prefix.  Prometheus metric
 # calls will not---they will have route '/metrics'.  This is
 # the conventional organization.
