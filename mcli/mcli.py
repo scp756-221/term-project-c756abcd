@@ -41,7 +41,7 @@ def get_s1_url(name, port):
     return "http://{}:{}/api/v1/user/".format(name, port)
 
 def get_s3_url(name, port):
-    return "http://{}:{}/api/v1/playList/".format(name, port)
+    return "http://{}:{}/api/v1/playlist/".format(name, port)
 
 
 def parse_quoted_strings(arg):
@@ -306,7 +306,7 @@ Enter 'help' for command list.
             print("now playing: " + self.playing_music)
             return
         
-        url = get_url(self.name, self.port)
+        url = get_s3_url(self.name, self.port)
         
         r = requests.get(
         url + "play/" + self.USER_ID + "/" + music_name,
@@ -341,7 +341,7 @@ Enter 'help' for command list.
         #     do_play(self, arg)
         #     return
 
-        url = get_url(self.name, self.port)
+        url = get_s3_url(self.name, self.port)
         r = requests.get(
             url + "next/" + self.USER_ID + "/" + str(self.create_time),
             headers={'Authorization': self.USER_ID}
@@ -369,12 +369,12 @@ Enter 'help' for command list.
 
         return 
 
-     def do_prev(self, arg):
+    def do_prev(self, arg):
         if self.USER_ID == "":
             print("no user logged in")
             return
 
-        url = get_url(self.name, self.port)
+        url = get_s3_url(self.name, self.port)
         r = requests.get(
             url + "prev/" + self.USER_ID + "/" + str(self.create_time),
             headers={'Authorization': self.USER_ID}
