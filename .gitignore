@@ -5,6 +5,7 @@ mk.mak
 gcp.mak
 allclouds.mak
 api.mak
+Makefile.mak
 .DS_Store
 __pycache__
 
