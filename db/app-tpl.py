@@ -106,14 +106,27 @@ def read_new():
     else:
         owner = ""
 
+    if request.args.get('artist') != None:
+        artist = urllib.parse.unquote_plus(request.args.get('artist'))
+    else:
+        artist = ""
+
     table_name = objtype.capitalize()+"-ZZ-REG-ID"
     table_id = objtype + "_id"
     table = dynamodb.Table(table_name)
     if objkey or objkey != "":
-        if owner or owner != "":
+        if (owner or owner != "") and (artist or artist != ""):
+            response = table.scan(
+                    FilterExpression=Attr('SongTitle').eq(objkey) & Attr('Owner').eq(owner) & Attr('Artist').eq(artist)
+                )
+        elif (owner or owner != ""):
             response = table.scan(
                     FilterExpression=Attr('SongTitle').eq(objkey) & Attr('Owner').eq(owner)
                 )
+        # elif (artist or artist != ""):
+        #     response = table.scan(
+        #             FilterExpression=Attr('SongTitle').eq(objkey) & Attr('Artist').eq(artist)
+        #         )
     else:
         if owner or owner != "":
             response = table.scan(
@@ -148,8 +161,7 @@ def next():
     table_name = objtype.capitalize()+"-ZZ-REG-ID"
     table = dynamodb.Table(table_name)
     response = table.scan(
-                        # KeyConditionExpression=Key("create_time").gt(create_time),
-                        # Limit=1,
+
                         FilterExpression=Attr('Owner').eq(owner) & Attr("create_time").gt(create_time)
                     )   
     response["test_create_time"] = create_time
@@ -164,10 +176,7 @@ def prev():
     table_name = objtype.capitalize()+"-ZZ-REG-ID"
     table = dynamodb.Table(table_name)
     response = table.scan(
-                        # KeyConditionExpression=Key("create_time").lt(create_time),
-                        # Limit=1,
-                        FilterExpression=Attr('Owner').eq(owner) & Attr("create_time").lt(create_time),
-                        ScanIndexForward=False
+                        FilterExpression=Attr('Owner').eq(owner) & Attr("create_time").lt(create_time)                  
                     )
 
     return response
