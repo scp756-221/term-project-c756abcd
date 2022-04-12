@@ -103,20 +103,20 @@ def list_table():
 
 
 # @bp.route('/<music_id>/', methods=['GET'])
-# def get_song(music_id):
-#     headers = request.headers
-#     # check header here
-#     if 'Authorization' not in headers:
-#         return Response(json.dumps({"error": "missing auth"}),
-#                         status=401,
-#                         mimetype='application/json')
-#     payload = {"objtype": "music", "objkey": music_id}
-#     url = db['name'] + '/' + db['endpoint'][0]
-#     response = requests.get(
-#         url,
-#         params=payload,
-#         headers={'Authorization': headers['Authorization']})
-#     return (response.json())
+def get_song(music_id):
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+    payload = {"objtype": "music", "objkey": music_id}
+    url = db['name'] + '/' + db['endpoint'][0]
+    response = requests.get(
+        url,
+        params=payload,
+        headers={'Authorization': headers['Authorization']})
+    return (response.json())
 
 @bp.route('/<owner>/<music_name>', methods=['GET'])
 def get_song_new(owner, music_name):
@@ -157,58 +157,72 @@ def create_song():
         headers={'Authorization': headers['Authorization']})
     return (response.json())
 
-@bp.route('/test_new_db_create', methods=['POST'])
-def create_song_new_db():
-    headers = request.headers
-    # check header here
-    if 'Authorization' not in headers:
-        return Response(json.dumps({"error": "missing auth"}),
-                        status=401,
-                        mimetype='application/json')
-    try:
-        content = request.get_json()
-        Artist = content['Artist']
-        SongTitle = content['SongTitle']
-        Owner = content['Owner']
-    except Exception:
-        return json.dumps({"message": "error reading arguments"})
-    url = db['name'] + '/' + db['endpoint'][1]
-    response = requests.post(
-        url,
-        json={"objtype": "playlist", "Artist": Artist, "SongTitle": SongTitle, "Owner": Owner, "create_time": int(time.time())},
-        headers={'Authorization': headers['Authorization']})
-    return (response.json())
-
-
-
-# @bp.route('/<music_id>', methods=['DELETE'])
-# def delete_song(music_id):
+# @bp.route('/test_new_db_create', methods=['POST'])
+# def create_song_new_db():
 #     headers = request.headers
 #     # check header here
 #     if 'Authorization' not in headers:
 #         return Response(json.dumps({"error": "missing auth"}),
 #                         status=401,
 #                         mimetype='application/json')
-#     url = db['name'] + '/' + db['endpoint'][2]
-#     response = requests.delete(
+#     try:
+#         content = request.get_json()
+#         Artist = content['Artist']
+#         SongTitle = content['SongTitle']
+#         Owner = content['Owner']
+#     except Exception:
+#         return json.dumps({"message": "error reading arguments"})
+#     url = db['name'] + '/' + db['endpoint'][1]
+#     response = requests.post(
 #         url,
-#         params={"objtype": "music", "objkey": music_id},
+#         json={"objtype": "playlist", "Artist": Artist, "SongTitle": SongTitle, "Owner": Owner, "create_time": int(time.time())},
 #         headers={'Authorization': headers['Authorization']})
 #     return (response.json())
 
-    
-@bp.route('/<owner>/<music_name>', methods=['DELETE'])
-def delete_song_new(owner, music_name):
+
+
+@bp.route('/<music_id>', methods=['DELETE'])
+def delete_song(music_id):
     headers = request.headers
     # check header here
     if 'Authorization' not in headers:
         return Response(json.dumps({"error": "missing auth"}),
                         status=401,
                         mimetype='application/json')
+    detail = get_song(music_id)
+    
+    url = db['name'] + '/' + db['endpoint'][2]
+    response = requests.delete(
+        url,
+        params={"objtype": "music", "objkey": music_id},
+        headers={'Authorization': headers['Authorization']})
+
+    ret = response.json()
+    ret["deleted_song_detail"] = detail
+    return (ret)
+
+    
+@bp.route('/delete_by_name/<owner>', methods=['DELETE'])
+def delete_song_new(owner):
+
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+
+    try:
+        content = request.get_json()
+        Artist = content['Artist']
+        SongTitle = content['SongTitle']
+        # Owner = content['Owner']
+    except Exception:
+        return json.dumps({"message": "error reading arguments"})
     url = db['name'] + '/' + db['endpoint'][4]
     response = requests.delete(
         url,
-        params={"objtype": "music", "objkey": music_name, "owner": owner},
+        params={"objtype": "music", "objkey": SongTitle, "owner": owner, "artist": Artist},
         headers={'Authorization': headers['Authorization']})
     return (response.json())
 
