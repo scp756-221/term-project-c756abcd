@@ -35,7 +35,7 @@ object RMusic {
   val rmusic = forever("i") {
     feed(feeder)
     .exec(http("RMusic ${i}")
-      .get("/api/v1/music/${UUID}"))
+      .get("/api/v1/music/${Owner}/${SongTitle}"))
       .pause(1)
   }
 
