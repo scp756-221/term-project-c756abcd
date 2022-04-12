@@ -6,6 +6,7 @@ Simple command-line interface to music service
 import argparse
 import cmd
 import re
+import time
 
 # Installed packages
 import requests
@@ -122,10 +123,10 @@ Enter 'help' for command list.
         print("{} items returned".format(items['Count']))
         print(items)
         for i in items['Items']:
-            print("{:20.20s} - {}".format(
-                # i['music_id'],
+            print("{:20.20s}  {}    music_id: {}".format(                
                 i['Artist'],
                 i['SongTitle'],
+                i['music_id'],
                 # i['Owner']
                 ))
 
@@ -158,10 +159,18 @@ Enter 'help' for command list.
             return
 
         url = get_url(self.name, self.port)
-        r = requests.get(
-            url + self.USER_ID+ "/" + arg.strip(),
-            headers={'Authorization': self.USER_ID}
-            )
+        args = parse_quoted_strings(arg)
+        if len(args) <= 0:
+            r = requests.get(
+                url+"list_table",
+                headers={'Authorization': self.USER_ID}
+                )
+        else:           
+            r = requests.get(
+                url + self.USER_ID+ "/" + arg.strip(),
+                headers={'Authorization': self.USER_ID}
+                )
+
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
             return
@@ -171,10 +180,10 @@ Enter 'help' for command list.
             return
         print("{} items returned".format(items['Count']))
         for i in items['Items']:
-            print("{:20.20s} - {}".format(
-                # i['music_id'],
+            print("{} - {}    music_id: {}".format(
                 i['Artist'],
                 i['SongTitle'],
+                i['music_id'],
                 # i['Owner']
                 ))
 
@@ -202,6 +211,9 @@ Enter 'help' for command list.
             return
         url = get_url(self.name, self.port)
         args = parse_quoted_strings(arg)
+        if len(args)<2:
+            print("input error, Examples: create 'Steely Dan'  \"Everyone's Gone to the Movies\"")
+            return
         payload = {
             'Artist': args[0],
             'SongTitle': args[1],
@@ -232,12 +244,67 @@ Enter 'help' for command list.
             print("no user logged in")
             return
         url = get_url(self.name, self.port)
-        r = requests.delete(
-            url + self.USER_ID + "/" + arg.strip(),
+        args = parse_quoted_strings(arg)
+        if len(args)<1:
+            print("need to specify music_id")
+            return
+        else:
+            r = requests.delete(
+                url + arg.strip(),
+                headers={'Authorization': self.USER_ID}
+            )
+            
+            details = r.json()
+            # print(details)
+            if "deleted_song_detail" in details:
+                if "Count" in details["deleted_song_detail"] and details["deleted_song_detail"]['Count'] > 0:
+                    for i in details["deleted_song_detail"]["Items"]:
+                        artist = i['Artist']
+                        music_name = i['SongTitle']
+                else:
+                    # print("return no count")
+                    return
+            else:
+                # print("return no details")
+                return
+            # print(artist)
+            # print(music_name)
+
+        if r.status_code != 200:
+            print("Remove from music list: Non-successful status code:", r.status_code)
+            return
+
+        #remove from playlist
+        url2 = get_s3_url(self.name, self.port)
+        payload = {
+            'Artist': artist,
+            'SongTitle': music_name,
+            'Owner': self.USER_ID
+        }
+        r2 = requests.get(
+                url2 +"read",
+                json=payload,
+                headers={'Authorization': self.USER_ID}
+            )
+
+        items = r2.json()
+        if "Count" in items and items['Count'] > 0:
+            for i in items['Items']:
+                playlist_id = i['playlist_id']
+        else:
+            # print("===test no playlist_id found")
+            return
+        
+
+        r2 = requests.delete(
+            url2 + playlist_id,
             headers={'Authorization': self.USER_ID}
             )
+
         if r.status_code != 200:
-            print("Non-successful status code:", r.status_code)
+            print("Remove from playlist: Non-successful status code:", r.status_code)
+            return
+
 
     def do_quit(self, arg):
         """
@@ -261,35 +328,79 @@ Enter 'help' for command list.
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
     
-    def do_test_new_db(self, arg):
-        url = get_url(self.name, self.port)
-        print(url)
+    def do_show_playlist(self, arg):        
+        url = get_s3_url(self.name, self.port)
+        # print(url)
         r = requests.get(
-            url+'test_new_db',
+            url+'show_playlist',
             headers={'Authorization': self.USER_ID}
             )
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
-        print(r.json())
 
-    def do_test_new_db_create(self, arg):
+        items = r.json()
+        if 'Count' not in items:
+            print("0 items returned")
+            return
+        print("{} items returned".format(items['Count']))
+        for i in items['Items']:
+            print("{} - {}    playlist_id:{}".format(
+                i['Artist'],
+                i['SongTitle'],
+                i['playlist_id'],
+                # i['Owner']
+                ))
+
+
+
+    def do_add_to_playlist(self, arg):
 
         if self.USER_ID == "":
             print("no user logged in")
             return
-        url = get_url(self.name, self.port)
+        url = get_s3_url(self.name, self.port)
         args = parse_quoted_strings(arg)
+        if len(args)<2:
+            print("input error, Examples: create 'Steely Dan'  \"Everyone's Gone to the Movies\"")
+            return
         payload = {
             'Artist': args[0],
             'SongTitle': args[1],
             'Owner': self.USER_ID
         }
         r = requests.post(
-            url+'test_new_db_create',
+            url+'add_music_to_playlist',
             json=payload,
             headers={'Authorization': self.USER_ID}
         )
-        print(r.json())
+        items = r.json()
+        if 'Error Message' in items:
+            print(items['Error Message'])
+            return
+        # else:
+            # print(r.json())
+
+    def do_remove_from_playlist(self, arg):
+        if self.USER_ID == "":
+            print("no user logged in")
+            return
+        url = get_s3_url(self.name, self.port)
+        args = parse_quoted_strings(arg)
+        if len(args)<1:
+            print("need to specify playlist_id")
+            return
+        else:
+            r = requests.delete(
+                url + arg.strip(),
+                headers={'Authorization': self.USER_ID}
+            )
+            return
+
+        if r.status_code != 200:
+            print("Remove from playlist: Non-successful status code:", r.status_code)
+            return
+        print("Removed" + str(arg.strip()))
+
 
     def do_play(self, arg):
         if self.USER_ID == "":
@@ -317,12 +428,15 @@ Enter 'help' for command list.
             return
 
         items = r.json()
-        if 'Count' not in items:
+        if 'Count' not in items or items['Count'] == 0:
             print("No music found")
             return
         print("{} items returned".format(items['Count']))
+        print("now playing:")
+        print("{:20.20s}  {}".format("Artist:", "SongTitle"))
+
         for i in items['Items']:
-            print("{:20.20s} - {}".format(
+            print("{:20.20s}  {}".format(
                 # i['music_id'],
                 i['Artist'],
                 i['SongTitle'],
@@ -352,20 +466,30 @@ Enter 'help' for command list.
 
         items = r.json()
         # print(items)
-        if 'Count' not in items:
+        if 'Count' not in items or items['Count'] == 0:
             print("No music found")
             return
         print("{} items returned".format(items['Count']))
-        for i in items['Items']:
-            print("{:20.20s} - {}".format(
-                # i['music_id'],
-                i['Artist'],
-                i['SongTitle'],
-                # i['Owner']
-                ))
-            self.playing_music = i['SongTitle']
-            self.create_time = i['create_time']
-            return # try only print one!
+        print("now playing:")
+        print("{:20.20s}  {}".format("Artist:", "SongTitle"))
+
+        tmp = int(time.time())
+        tmp_artist = ""
+
+        for i in items['Items']:            
+            if i['create_time'] < tmp:
+                # print(i['SongTitle'] + "  " + str(i['create_time']))
+                tmp = i['create_time']
+                self.playing_music = i['SongTitle']
+                self.create_time = i['create_time']
+                tmp_artist = i['Artist']
+        
+        print("{:20.20s}  {}".format(
+            # i['music_id'],
+            tmp_artist,
+            self.playing_music,
+            # i['Owner']
+            ))
 
         return 
 
@@ -385,20 +509,31 @@ Enter 'help' for command list.
 
         items = r.json()
         # print(items)
-        if 'Count' not in items:
+        if 'Count' not in items or items['Count'] == 0:
             print("No music found")
             return
         print("{} items returned".format(items['Count']))
+        print("now playing:")
+        print("{:20.20s}  {}".format("Artist:", "SongTitle"))
+        count = items['Count']
+
+        tmp = 0
+        tmp_artist = ""
+
         for i in items['Items']:
-            print("{:20.20s} - {}".format(
-                # i['music_id'],
-                i['Artist'],
-                i['SongTitle'],
-                # i['Owner']
-                ))
-            self.playing_music = i['SongTitle']
-            self.create_time = i['create_time']
-            return # try only print one!
+            if i['create_time'] > tmp:
+                tmp = i['create_time']
+                self.playing_music = i['SongTitle']
+                self.create_time = i['create_time']
+                tmp_artist = i['Artist']
+        
+        print("{:20.20s}  {}".format(
+            # i['music_id'],
+            tmp_artist,
+            self.playing_music,
+            # i['Owner']
+            ))
+            # return # try only print one!
 
         return 
 
@@ -434,23 +569,24 @@ Enter 'help' for command list.
             json=payload,
            
         )
-        print(url)
+        # print(url)
         # print(r.json())
         if r.status_code != 200:
             print("Non-successful status code:", r.status_code)
             return
-        print("json:  " + r.text)
+        # print("json:  " + r.text)
         decode = jwt.decode(r.text, 'secret', algorithms='HS256')
-        print(decode)
+        # print(decode)
         self.USER_ID = decode["user_id"]
         # self.USER_ID = self.USER_ID
         print(self.USER_ID)
         
     def do_create_user(self, arg):
+        args = parse_quoted_strings(arg)
         payload = {
-            'fname': arg[0],
-            'lname': arg[1],      
-            'email': arg[2],           
+            'fname': args[0],
+            'lname': args[1],      
+            'email': args[2],           
         }
         url = get_s1_url(self.name, self.port)
         r = requests.post(

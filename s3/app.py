@@ -19,6 +19,7 @@ from prometheus_flask_exporter import PrometheusMetrics
 import requests
 
 import simplejson as json
+import time
 
 # Local modules
 import unique_code
@@ -46,6 +47,52 @@ db = {
 }
 bp = Blueprint('app', __name__)
 
+@bp.route('/show_playlist', methods=['GET'])
+def show_playlist():
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+    # list all songs here
+    if headers['Authorization'] != 'Bearer A':
+        #pass in owner id, list all music under that owner
+        payload = {"objtype": "PlayList"}
+    else:
+        #for testing, list the whole table
+        payload = {"objtype": "PlayList"}
+    url = db['name'] + '/' + db['endpoint'][3]
+    response = requests.get(
+        url,
+        payload,
+        headers={'Authorization': headers['Authorization']})
+    return (response.json())
+
+@bp.route('/read', methods=['GET'])
+def get_song():
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+    try:
+        content = request.get_json()
+        Artist = content['Artist']
+        SongTitle = content['SongTitle']
+        Owner = content['Owner']
+    except Exception:
+        return json.dumps({"message": "error reading arguments"})
+
+
+    payload = {"objtype": "playlist", "objkey": SongTitle, "artist": Artist, "owner": Owner}
+    url = db['name'] + '/' + db['endpoint'][3]
+    response = requests.get(
+        url,
+        params=payload,
+        headers={'Authorization': headers['Authorization']})
+    return (response.json())
 
 @bp.route('/play/<owner>/<music_name>', methods=['GET'])
 def play_music(owner, music_name):
@@ -172,7 +219,7 @@ def prev_music(owner, create_time):
         
         if 'Count' not in items_  or items_['Count'] == 0:        
             # otherwise play from begining
-            url = db['name'] + "/prev"
+            url = db['name'] + "/next"
             payload = {"objtype": "Playlist", "owner": headers['Authorization'], "create_time": 0}
             response__ = requests.get(
                 url,
@@ -187,22 +234,89 @@ def prev_music(owner, create_time):
     
     return (response.json())
 
-
-@bp.route('/<owner>/<music_name>', methods=['DELETE'])
-def delete_song_from_playlist(owner, music_name):
+@bp.route('/add_music_to_playlist', methods=['POST'])
+def add_music_to_playlist():
     headers = request.headers
     # check header here
     if 'Authorization' not in headers:
         return Response(json.dumps({"error": "missing auth"}),
                         status=401,
                         mimetype='application/json')
+    try:
+        content = request.get_json()
+        Artist = content['Artist']
+        SongTitle = content['SongTitle']
+        Owner = content['Owner']
+    except Exception:
+        return json.dumps({"message": "error reading arguments"})
+
+    #read from music_list first
+    payload = {"objtype": "music", "objkey": SongTitle, "Artist": Artist, "owner": Owner}
+    url = db['name'] + '/' + db['endpoint'][3]
+    response = requests.get(
+        url,
+        params=payload,
+        headers={'Authorization': headers['Authorization']})
+    
+    items = response.json()        
+    if 'Count' not in items  or items['Count'] == 0:  
+        ret = response.json()
+        ret['Error Message'] = "Can only add music existed in music list to play list!"
+        return (ret)
+    else:
+        url = db['name'] + '/' + db['endpoint'][1]
+        response = requests.post(
+            url,
+            json={"objtype": "playlist", "Artist": Artist, "SongTitle": SongTitle, "Owner": Owner, "create_time": int(time.time())},
+            headers={'Authorization': headers['Authorization']})
+        return (response.json())
+    return (response.json())
+
+
+@bp.route('/<music_id>', methods=['DELETE'])
+def delete_song(music_id):
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+    # detail = get_song(music_id)
+    
+    url = db['name'] + '/' + db['endpoint'][2]
+    response = requests.delete(
+        url,
+        params={"objtype": "playlist", "objkey": music_id},
+        headers={'Authorization': headers['Authorization']})
+
+    # ret = response.json()
+    # ret["deleted_song_detail"] = detail
+    return ( response.json())
+
+    
+@bp.route('/delete_by_name/<owner>', methods=['DELETE'])
+def delete_song_by_name(owner):
+
+    headers = request.headers
+    # check header here
+    if 'Authorization' not in headers:
+        return Response(json.dumps({"error": "missing auth"}),
+                        status=401,
+                        mimetype='application/json')
+
+    try:
+        content = request.get_json()
+        Artist = content['Artist']
+        SongTitle = content['SongTitle']
+        # Owner = content['Owner']
+    except Exception:
+        return json.dumps({"message": "error reading arguments"})
     url = db['name'] + '/' + db['endpoint'][4]
     response = requests.delete(
         url,
-        params={"objtype": "music", "objkey": music_name, "owner": owner},
+        params={"objtype": "playlist", "objkey": SongTitle, "owner": owner, "artist": Artist},
         headers={'Authorization': headers['Authorization']})
     return (response.json())
-
 
 
 @bp.route('/health')

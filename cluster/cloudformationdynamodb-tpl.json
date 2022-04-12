@@ -53,20 +53,12 @@
             {
               "AttributeName": "playlist_id",
               "AttributeType": "S"
-            },
-            {
-              "AttributeName": "create_time",
-              "AttributeType": "N"
             }
           ],
           "KeySchema": [
             {
               "AttributeName": "playlist_id",
               "KeyType": "HASH"
-            },
-            {
-              "AttributeName": "create_time",
-              "KeyType": "RANGE"
             }
           ],
           "ProvisionedThroughput": {
