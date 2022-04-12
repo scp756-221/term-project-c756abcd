@@ -61,7 +61,7 @@ object RPlaylist {
   val rplaylist = forever("i") {
     feed(feeder)
     .exec(http("RPlaylist ${i}")
-      .get("/api/v1/playlist/play/${Owner}/${SongTitle"))
+      .get("/api/v1/playlist/show_playlist"))
     .pause(1)
   }
 
@@ -102,7 +102,7 @@ object RPlaylistVarying {
   val rplaylist = forever("i") {
     feed(feeder)
     .exec(http("RPlaylistVarying ${i}")
-      .get("/api/v1/playlist/play/${Owner}/${SongTitle"))
+      .get("/api/v1/playlist/${UUID}"))
     .pause(1, 60)
   }
 }
